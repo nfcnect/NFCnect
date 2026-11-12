@@ -1,0 +1,2 @@
+import proposal from '../../server/proposal.mjs';
+export default function Proposal(){return <main style={{maxWidth:1100,margin:'35px auto',padding:20}}><a href="/">← Loyalty Studio</a><h1>NFCnect feasibility proposal</h1><p>Original planning assumptions, preserved for reference. See the <a href="/guide">current implementation guide</a> for security and backend capabilities. Use your browser’s print command to save a PDF.</p><div dangerouslySetInnerHTML={{__html:proposal}}/></main>}
