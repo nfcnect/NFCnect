@@ -1,6 +1,6 @@
 import {pointEngine} from './points.mjs';
 // No session or identity claims are accepted from request bodies. The hosted route
-// supplies identity exclusively from Sites' authenticated request context.
+// supplies identity exclusively from the verified Supabase authentication boundary.
 export class HttpError extends Error{constructor(status,message){super(message);this.status=status}}
 const fail=(status,message)=>{throw new HttpError(status,message)},uid=()=>crypto.randomUUID(),now=()=>new Date().toISOString();
 const text=(v,max=120)=>{if(typeof v!=='string'||!v.trim()||v.trim().length>max)fail(400,'Invalid text field.');return v.trim()};
@@ -75,7 +75,7 @@ export function service(db,actor,origin,bootstrapEmail){
 }
 export async function handle(request,env,actor){
  const headers={'Content-Type':'application/json','Cache-Control':'no-store, private','Vary':'Cookie','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'};
- try{if(!actor)fail(401,'Sign in with ChatGPT to continue.');if(!env.DB)fail(503,'Database is not configured.');const url=new URL(request.url),origin=env.SITE_ORIGIN||url.origin;
+ try{if(!actor)fail(401,'Sign in to continue.');if(!env.DB)fail(503,'Database is not configured.');const url=new URL(request.url),origin=env.SITE_ORIGIN;if(!origin)fail(503,'The site address is not configured.');
  if(request.method!=='GET'){if(request.headers.get('origin')!==origin||request.headers.get('sec-fetch-site')==='cross-site')fail(403,'Request origin rejected.');if(!request.headers.get('content-type')?.startsWith('application/json'))fail(415,'JSON required.');const bytes=Number(request.headers.get('content-length'));if(bytes>20000)fail(413,'Request too large.')}
  let data={};if(request.method==='POST'){const raw=await request.text();if(raw.length>20000)fail(413,'Request too large.');try{data=JSON.parse(raw)}catch{fail(400,'Invalid JSON.')}if(!data||typeof data!=='object'||Array.isArray(data))fail(400,'JSON object required.')}
  const path=url.pathname.replace(/^\/api\//,'');const result=await service(env.DB,actor,origin,env.BOOTSTRAP_ADMIN_EMAIL).execute(path,request.method,data,url.searchParams,request.headers.get('idempotency-key')||'');return new Response(JSON.stringify(result),{status:200,headers});
