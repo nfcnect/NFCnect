@@ -1,0 +1,12 @@
+import {readFileSync} from 'node:fs';
+import {resolve,dirname} from 'node:path';
+import {spawnSync} from 'node:child_process';
+const source=JSON.parse(readFileSync('wrangler.jsonc','utf8'));
+if(source.d1_databases.some(db=>db.database_id==='00000000-0000-4000-8000-000000000000'))throw Error('Set your actual Cloudflare D1 database ID in wrangler.jsonc before deployment.');
+const pointer=resolve('.wrangler/deploy/config.json');
+const config=JSON.parse(readFileSync(pointer,'utf8'));
+const output=resolve(dirname(pointer),config.configPath);
+const generated=JSON.parse(readFileSync(output,'utf8'));
+if(generated.name!==source.name||generated.d1_databases?.[0]?.database_id!==source.d1_databases[0].database_id)throw Error('Build output is stale. Run npm run build:cloudflare after changing wrangler.jsonc.');
+const r=spawnSync(process.execPath,['node_modules/wrangler/bin/wrangler.js','deploy','--config',output],{stdio:'inherit'});
+process.exit(r.status??1);

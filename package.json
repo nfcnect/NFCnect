@@ -7,11 +7,19 @@
   },
   "scripts": {
     "install:ci": "node scripts/install-ci.mjs",
-    "dev": "node scripts/run-framework.mjs dev",
-    "build": "node scripts/run-framework.mjs build",
+    "dev": "vite --config vite.cloudflare.config.ts",
+    "build": "vite build --config vite.cloudflare.config.ts",
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 127.0.0.1 --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "dev:cloudflare": "vite --config vite.cloudflare.config.ts",
+    "build:cloudflare": "vite build --config vite.cloudflare.config.ts",
+    "deploy:cloudflare": "node scripts/cloudflare-deploy.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
+    "test": "node --test tests/backend.test.mjs tests/auth.test.mjs",
+    "dev:sites": "node scripts/run-framework.mjs dev",
+    "build:sites": "node scripts/run-framework.mjs build"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

@@ -1,3 +1,20 @@
+# Independent-hosting migration verification
+
+Local checks completed on 12 November 2026:
+- 29 Node test groups passed: 20 existing loyalty tests and 9 authentication-boundary tests.
+- The Cloudflare Vite production build passed; final type checks and build are recorded in the task result.
+- All nine migration files applied successfully to fresh local D1, including the identity-link mapping.
+- Existing Miniflare D1 integration checks passed for scoped access, retries, concurrent redemption, refunds, privacy redaction, expiration and hybrid entry.
+- Browser preview rendered the sign-in and registration screens. Real email/password submission was not tested without a configured Supabase project.
+
+Authentication tests use mocked responses from the configured Supabase provider; they do not prove that real Supabase credentials, email templates, SMTP delivery, or Cloudflare runtime settings have been configured. They verify that the application fails closed for forged headers, unconfirmed/anonymous/invalid sessions and provider failures, rotates HttpOnly secure cookies, rejects cross-origin account actions, keeps tokens out of JSON responses, handles confirmation/reset tokens server-side, and preserves legacy ownership through a reviewed mapping.
+
+Pending launch gates: actual provider account setup, hosted multi-user acceptance tests, real email confirmation/recovery delivery, independent database backup/restore, physical NFC compatibility, final data transfer and balance reconciliation. The original Site and its access settings have not been changed.
+
+## Original implementation report (historical)
+
+The following report describes the original Sites implementation and its earlier checks; its Sites-specific hosting/access statements do not describe the independent build.
+
 # NFCnect verification report
 
 ## Automated backend checks

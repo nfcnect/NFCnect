@@ -1,30 +1,32 @@
 # NFCnect backend configuration and operator guide
 
-## Deployment and identity
+## Independent deployment and identity
 
-This is a Vinext/Cloudflare Worker application using a Sites-provisioned D1 database (`DB`). Keep `.openai/hosting.json`, the complete `drizzle/` migration history, the Sites Vite integration and the ChatGPT authentication helper in source control. Build using the Sites build helper; publish the same pushed commit and its archive. Sites applies D1 migrations before the Worker is published.
+This branch runs on your own Cloudflare Worker and D1 database. Supabase Auth handles email/password accounts. The runtime never accepts identity headers from Sites or roles supplied by a browser. Each protected request verifies its access token against Supabase's `/auth/v1/user` endpoint, requires a confirmed non-anonymous email identity, then loads business permissions from D1.
 
-Runtime configuration:
+Sessions use HttpOnly, SameSite=Lax cookies, Secure on HTTPS. Access and refresh tokens are never returned to application JavaScript. Expired sessions can refresh server-side. Writes require JSON and the exact configured Origin. Auth endpoints are rate-limited through D1. Sign-out is a POST action.
 
-| Name | Purpose |
+| Setting | Purpose |
 |---|---|
-| DB | Provisioned D1 binding, declared by `d1: "DB"` in hosting.json |
-| SITE_ORIGIN | Exact HTTPS site origin, without trailing slash; used for links and write-request origin checks |
-| BOOTSTRAP_ADMIN_EMAIL | Secret runtime setting identifying the site owner's verified ChatGPT email; only this account can create businesses |
+| DB | Cloudflare D1 binding from wrangler.jsonc |
+| SITE_ORIGIN | Exact HTTPS site origin, without trailing slash |
+| SUPABASE_URL | Your Supabase project's HTTPS origin |
+| SUPABASE_PUBLISHABLE_KEY | Project publishable key, used by the server proxy |
+| BOOTSTRAP_ADMIN_EMAIL | Confirmed owner email allowed to initialize businesses |
 
-Sites supplies `oai-authenticated-user-id` and `oai-authenticated-user-email` after authentication. The server uses the stable site-specific user ID as ownership key. Verified email is used only to match invitations and bootstrap the first business. Never expose this Worker through another public endpoint that bypasses Sites' authenticated identity boundary. Do not accept identity or role claims in JSON or client-controlled application cookies.
+Use `npm run build:cloudflare` and `npm run deploy:cloudflare`. Set the real D1 database ID in wrangler.jsonc before deployment. The deploy helper refuses the placeholder ID and follows the Cloudflare plugin's generated output configuration. Keep secrets in Cloudflare settings, never in GitHub source. See docs/INDEPENDENT-DEPLOYMENT.md for the complete setup and email templates.
 
-Sessions, sign-in cookies, and sign-out are owned by Sites. The application does not store passwords or implement a second OAuth provider. A normal top-level link to `/signin-with-chatgpt?return_to=...` starts sign-in. The return path remains same-origin. Responses containing account data use Cache-Control: no-store, private. Writes require JSON and the exact configured Origin. Application rate limiting allows 90 authenticated requests per minute per identity.
+## Accounts and ownership
 
-## Existing access restriction
+Registration alone grants no membership or employee role. A business administrator enrolls a customer or invites an employee using that person's confirmed account email. Card URLs identify memberships; they are not credentials. Do not share the owner's account.
 
-The site currently admits only its owner. This restriction was preserved. Other customers and employees cannot use invitation links until the owner explicitly grants them permission to visit. Business invitations grant application roles, not site access. The supported access configuration includes custom allowlisting of visitors and, if the owner later requests it, broader site access. Do not share the owner's account or silently make the site public. If visitor invitations are used, confirm the intended recipients and grant access through Sites.
+New accounts use namespaced Supabase subjects as ownership keys. Existing records are not automatically matched by email. An operator must independently verify each legacy owner's identity and install a reviewed identity_links mapping. This retains the legacy ownership ID, points, ledger, and assigned business roles. See the deployment guide before importing real data.
 
 ## Setup and operation
 
 1. Sign in as the configured owner. Click Initialize your business. This atomically creates the first business and its administrator, with three proposed starter rewards. No members, balances, demo transactions or sample links are imported.
-2. Administrator: Enroll member. Enter the display name and the intended customer's ChatGPT sign-in email after explaining program and privacy terms. Copy the private claim link and the card link. Tokens are randomly generated; only SHA-256 hashes are stored. Raw links are shown once.
-3. Share the claim link privately with the intended customer. Do not write it on the card. It expires in seven days, is bound to the email and can be accepted only once after sign-in. The owner must separately authorize site access before other people can reach it.
+2. Administrator: Enroll member. Enter the display name and the intended customer's confirmed account email after explaining program and privacy terms. Copy the private claim link and the card link. Tokens are randomly generated; only SHA-256 hashes are stored. Raw links are shown once.
+3. Share the claim link privately with the intended customer. Do not write it on the card. It expires in seven days, is bound to the email and can be accepted only once after sign-in.
 4. Write only the `/?card=<opaque token>` URL to the NFC card. The same URL can be printed as a QR code. The card contains no balance, password or contact information. Card URLs are public identifiers, not login credentials.
 5. Customer: accept invitation while signed in with the invited email, then open the card URL or My membership. The server checks ownership before returning account data.
 6. Cashier: sign in with an invited employee account, select the assigned business, identify the member, verify completed payment and enter eligible net paid amount and receipt. Points are calculated by the server. Even purchases below the earning threshold are recorded as zero-point purchases.
@@ -45,7 +47,7 @@ CSV reporting exports up to 10,000 ledger entries. Larger exports require an ope
 
 ## API reference
 
-Account and write endpoints are under /api and require a Sites-authenticated identity. GET /api/health returns only database/schema readiness, with no customer data; the site’s private visitor gate still applies. All POSTs require Content-Type: application/json and the configured Origin. Provide a unique Idempotency-Key for purchase, request, redeem and refund. Retain the same key and body when retrying an uncertain result. Reusing a key with changed input is rejected. The UI retains only retry keys in session storage, never authoritative customer records.
+Account and write endpoints are under /api and require a verified Supabase identity. GET /api/health returns only database/schema readiness, with no customer data; the site’s private visitor gate still applies. All POSTs require Content-Type: application/json and the configured Origin. Provide a unique Idempotency-Key for purchase, request, redeem and refund. Retain the same key and body when retrying an uncertain result. Reusing a key with changed input is rejected. The UI retains only retry keys in session storage, never authoritative customer records.
 
 | Method / endpoint | Authorization / main fields |
 |---|---|
@@ -77,7 +79,7 @@ Account and write endpoints are under /api and require a Sites-authenticated ide
 
 ## Backup, recovery and reconciliation
 
-The database is provisioned by Sites. No automated backup schedule or operator restore interface has been configured by this implementation. The ledger CSV is not a full backup: memberships, roles, cards, invitations, rewards and other records are also required. Before using real customer data, the operator must confirm the database provider's available retention/restore facilities and obtain supported operator access for complete exports and recovery.
+The database is provisioned in the operator’s Cloudflare account. No automated backup schedule or operator restore interface has been configured by this implementation. The ledger CSV is not a full backup: memberships, roles, cards, invitations, rewards and other records are also required. Before using real customer data, the operator must confirm the database provider's available retention/restore facilities and obtain supported operator access for complete exports and recovery.
 
 Recommended operating procedure: take a full encrypted database export before schema changes and on a regular approved schedule; restrict access to operators; document retention; test restoration into a separate non-production database. Verify foreign keys, membership ownership, row counts, unique receipts, ledger source uniqueness, redemption deductions and refund totals before any cutover. Never test recovery against the only live copy. Proposed backup frequency and retention must be approved by the business and verified against the hosting provider's actual capabilities.
 
