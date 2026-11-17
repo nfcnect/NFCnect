@@ -1,1 +1,8 @@
-declare namespace Cloudflare { interface Env { DB?: D1Database; BUCKET?: R2Bucket; SITE_ORIGIN?:string; BOOTSTRAP_ADMIN_EMAIL?:string; } }
+interface CloudflareEnv {
+ DB: D1Database;
+ SITE_ORIGIN: string;
+ SUPABASE_URL: string;
+ SUPABASE_PUBLISHABLE_KEY: string;
+ BOOTSTRAP_ADMIN_EMAIL: string;
+}
+declare namespace Cloudflare { interface Env extends CloudflareEnv {} }

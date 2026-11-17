@@ -1,10 +1,7 @@
-NFCnect source export
-Source commit: a0b86aec392f4e16e593106a7dcbaba666af12d7
+NFCnect independent-hosting migration
 
-This archive contains the existing Sites application source, database schema/migrations, tests and documentation. It is NOT an independent Cloudflare migration build. ChatGPT authentication and Sites deployment integration remain.
+This branch adds Supabase authentication and an independent Cloudflare Workers/D1 build. Read README.md and docs/INDEPENDENT-DEPLOYMENT.md first.
 
-It excludes Git history, credentials, installed dependencies, generated build files and database contents. Existing customer records and balances are not included.
+Account setup is still required: provide your own Supabase project, Cloudflare account, D1 database ID, runtime settings and owner email. The deployment helper rejects the placeholder D1 ID.
 
-For GitHub: extract the ZIP, then upload the extracted contents (including .gitignore, .npmrc and .openai/) to your private repository. Put package.json at the repository root. Do not upload only the ZIP expecting GitHub to extract it.
-
-Before independent public hosting: replace platform-header authentication with verified Supabase sessions on every protected endpoint, configure your own D1 binding, migrate identity ownership securely, configure the new origin, import verified database data through supported access, and rerun authorization and transaction tests. Do not deploy this source unchanged to a public Worker; its identity-header trust depends on the Sites gateway.
+No live customer data, keys or credentials are included. Existing membership/employee identities require the operator-reviewed mapping procedure; do not automatically link accounts by email. Automated checks are not a substitute for hosted acceptance tests, email delivery, restore testing or physical NFC checks.
